@@ -1,5 +1,5 @@
 ## ffmpeg
-To support C66x accelerator in ffmpeg
+To support c66x accelerator in ffmpeg
 
 ##Steps to apply a patch to ffmpeg
 1. Copy c66x_accel.h to <FFMPEG_PKGS>/include folder that contains ffmpeg header files
