@@ -1,7 +1,7 @@
-# ffmpeg
+## ffmpeg
 To support C66x accelerator in ffmpeg
 
-#Steps to apply a patch to ffmpeg
+##Steps to apply a patch to ffmpeg
 1. Copy c66x_accel.h to <FFMPEG_PKGS>/include folder that contains ffmpeg header files
 2. Apply a patch to ffmpeg.c using command,
    <\n>patch ffmpeg.c ffmpeg_Signalogic.patch
