@@ -19,7 +19,7 @@
 ###Usage
 Command line examples:
 <br />1. ffmpeg -y `-hwaccel c66x fg f ia` -f rawvideo -pix_fmt yuv420p -s 352x288 -r 30 -i input.yuv -b:v 1500000 /tmp/host_files/output.yuv
-<br />2. ffmpeg -y `-hwaccel c66x fg f` -f rawvideo -pix_fmt yuv420p -s 352x288 -r 30 -i input.yuv -b:v 1500000 /tmp/host_files/output.yuv -f rtp rtp://< IP_ADDRESS >:< PORT_NUM >:< MAC_ADDRESS >
+<br />2. ffmpeg -y `-hwaccel c66x fg f` -f rawvideo -pix_fmt yuv420p -s 352x288 -r 30 -i input.yuv -b:v 1500000 /tmp/host_files/output.yuv -f rtp rtp://< ip_addr >:< port_num >:< mac_addr >
 
 ###Supported options
 `fg/bg`: To run H264 encoded streaming process in foreground/background
