@@ -27,4 +27,4 @@ Command line examples:
 
 ###Tested Linux and kernel versions
 Ubuntu: 14.04, 14.10, 12.04
-Kernel: 3.2.0, 3.13.0, 3.15.6
+<br />Kernel: 3.2.0, 3.13.0, 3.15.6
