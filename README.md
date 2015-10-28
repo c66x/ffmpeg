@@ -24,3 +24,6 @@ Command line examples:
 <br />`f`: To use VIRTFS/HOSTFS mode. That will use ffmpeg code for frame-by-frame processing of input. There is also VIRTIO/HOSTIO mode, which will use Signalogic APIs to process frame by frame input(under development)
 <br />`ia`: To use Image Analytics along with the encoding and streaming using c66x accelerator cards. Default is just a streaming mode
 <br />`d`: Debug mode in which, both c66x and ffmpeg outputs the encoded stream that can be used for quality checks and troubleshooting(under development)
+
+###Supported Linux
+Ubuntu 14.04, 14.10, 12.04
