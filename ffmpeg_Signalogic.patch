@@ -14,9 +14,10 @@
 >  
 >     Created July 2015 Anish Mathew
 > 
->     Revised July 2015, Anish Mathew, added "-hwaccel C66x" to use C66x cores for encoding.
+>    Revised July 2015, Anish Mathew, added "-hwaccel C66x" to use C66x cores for encoding.
 > 	 Revised July 2015, HP, added "-hwaccel C66x bg" option to control streamTest to run in foreground/background from ffmpeg command lines.
-> 	 Revised Aug 2015, added "-hwaccel c66x bg/fg f d". f(file mode) set the VIRTFS/HOSTFS Mode and uses ffmpeg for frame-by-frame file copying to shared folder. Default is VIRTIO/HOSTIO Mode, that will use Readframe/Writeframe APIs for file copying (Not implemented yet).
+> 	 Revised Aug 2015, HP, added "-hwaccel c66x bg/fg f d". f(file mode) set the VIRTFS/HOSTFS Mode and uses ffmpeg for frame-by-frame file copying to shared folder. Default is VIRTIO/HOSTIO Mode, that will use Readframe/Writeframe APIs for file copying (Not implemented yet).
+>    Revised Sep 2015, HP, added "-hwaccel c66x ia". ia(image analytics) set the flag in streamTest.cmd for Image Analytics + Streaming.
 >  */
 108a124,161
 > #ifdef _TI66X_ACCEL
