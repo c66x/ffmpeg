@@ -1,0 +1,283 @@
+19c19,20
+<  */
+---
+>  /*
+>   _TI66X_ACCEL enables c66x accelerator support
+20a22,35
+>     -accelerate ffmpeg with TI multicore CPUs
+>     -allow streaming on the accelerator card NIC
+>     -support ffmpeg at HPC levels of performance inside VMs
+>  
+>   Copyright (c) 2014-2015  Signalogic, Inc.
+> 
+> 	 Revision History:
+>  
+>     Created July 2015 Anish Mathew
+> 
+>     Revised July 2015, Anish Mathew, added "-hwaccel C66x" to use C66x cores for encoding.
+> 	 Revised July 2015, HP, added "-hwaccel C66x bg" option to control streamTest to run in foreground/background from ffmpeg command lines.
+> 	 Revised Aug 2015, added "-hwaccel c66x bg/fg f d". f(file mode) set the VIRTFS/HOSTFS Mode and uses ffmpeg for frame-by-frame file copying to shared folder. Default is VIRTIO/HOSTIO Mode, that will use Readframe/Writeframe APIs for file copying (Not implemented yet).
+>  */
+108a124,161
+> #ifdef _TI66X_ACCEL
+> 
+>   #include "c66x_accel.h"
+>   #include <stdio.h>
+>   #include <unistd.h>  /* execl() */
+>   #include <sys/types.h>
+>   #include <sys/stat.h>
+>   #include <fcntl.h>
+> 
+>   volatile uint32_t c66xAccelConfig;  /* TI c66x accelerator configuration */  
+> 
+>   //volatile VDIPARAMS VDIParams[MAXSTREAMS];  /* to-do:  attributes must be set in ffmpeg.c, based on cmd line entry */
+> 
+>   char cmdstr[256], tmpstr[256], width_String_Ptr[256], height_String_Ptr[256], bitRate_String_Ptr[256], 
+>   frameRate_String_Ptr[256], inputFile_String_Ptr[256], outputFile_String_Ptr[256], rtp_String_Ptr[256],
+>   destaddress[256], rtpaddress[256], h264ProfileType[256], h264BitstreamConfig[256], h264InterframeConfig[256], 
+>   copyCommand[512], streamCommand[1024], resolutionString[256], inputFileName[1024], outputFileName[1024], sharedFilePath[1024], RTPinput[1024],
+>   delimiter[16] = "rtp://", dest[1024] = "rtp://", lib[64] = "libx264", codecParam[64] = "-c:v";
+>   char *token;
+>   unsigned int outFileIndex;
+> 
+>   const char* writeFifo = "/run/Sig_pipe";
+>   char fileWriteFifo[256];
+>   
+>   int pipe_ptr = 0;
+>   int streamTestFlag = 0;
+>   int destaddr_tokenindex = 0;
+>   int streamOutputFlag = 0;
+>   int fileOutputFlag = 0;
+>   int vmFlag = 0;
+>   int debugMode = 0;
+>   int iaEnabled = 0;
+>   int argDiff, argcVal, hwaccelOptLocate;
+>   //bool streamingOutputNIC = false;  /* set true if command line requires some type of c66x accelerator NIC output, e.g. RTP or MPEG-TS streaming */
+>   unsigned int c66x_accel = C66X_ACCEL_VIRTIO_MODE; /* run-time flag that is set based on if VIRTFS or VIRTIO mode is selected*/
+>   int backGroundMode = 1, RTPentered = 0;
+> #endif
+> 
+4231c4284,4288
+< 
+---
+> #ifdef _TI66X_ACCEL
+>     int idx, i, portChange;
+> 	 char bufferTemp[128];
+> 	 FILE * fptr;
+> #endif
+4254a4312,4313
+> 	 
+> #ifdef _TI66X_ACCEL
+4255a4315,4526
+> /* Find number of options inserted between -hwaccel and next -<ffmpeg_recognized_option> to shift the arguments by that number so that ffmpeg does not see Signalogic related options */
+> 
+> 		hwaccelOptLocate = idx = locate_option(argc, argv, options, "hwaccel");
+> 		for (i = hwaccelOptLocate+1; i < argc; i++) {
+> 			if (argv[i][0] == '-')
+> 			break;
+> 		}
+> 		argDiff = i - (hwaccelOptLocate + 2); /* This gives the position of arg after "-hwaccel c66x" */
+> 
+> 
+> /* Checks for c66x and other command line options (bg,fg,f,d) and set the flags accordingly */
+> 
+> 		if (!strcmp(argv[idx+1], "c66x")) {
+> 			printf("hwaccel index = %d\n", idx);
+> 			c66xAccelConfig = C66X_ACCEL_ENABLE_ENCODE_H264 | C66X_ACCEL_ENABLE_STREAMING_RTP;  /* default configuration if c66x hwaccel found on cmd line */
+> 			printf("c66x accel: H.264 encode and RTP streaming enabled\n");
+> 			strcpy(argv[idx+1], "none");  /* to-do: define c66x hardware type and let ffmpeg use it normally where possible.  JHB, Jul 2015 */
+> 		
+> 			for (i=argDiff; i< (argDiff + hwaccelOptLocate + 2); i++) {
+> 				if (!strcmp(argv[i], "bg")) { /* Checking if background flag (bg) is entered to the ffmpeg command line and set the flag accordingly. HP, July 2015 */
+> 					backGroundMode = 1;
+> 				}
+> 		
+> 				if (!strcmp(argv[i], "fg")) { /* Checking if background flag (bg) is entered to the ffmpeg command line and set the flag accordingly. HP, July 2015 */
+> 					backGroundMode = 0;
+> 				}
+>       
+> 				if (!strcmp(argv[i], "f"))  {
+> 					c66x_accel = C66X_ACCEL_VIRTFS_MODE;
+> 					printf("c66x_accel Mode = %u\n",c66x_accel);
+> 				}
+> 			
+> 				if (!strcmp(argv[i], "d"))  {
+> 					debugMode = 1;
+> 					printf("Debug Mode is ON\n");
+> 				}
+> 				
+> 				if (!strcmp(argv[i], "ia"))  {
+> 					iaEnabled = 1;
+> 					printf("Debug Mode is ON\n");
+> 				}
+> 			}
+> 			
+> /* Shifting argument and making it NULL so that ffmpeg code does not see c66x options */
+> 
+> 			for ( i = (hwaccelOptLocate+2); i<argc; i++) 
+> 				argv[i] = argv[i+argDiff];
+> 			
+> 			for (i = 0; i< argDiff; i++) {	
+> 					argcVal = argc;
+> 					argcVal -= i;
+> 					argv[argcVal] = NULL;
+> 				}
+> 			argc -= argDiff;
+> 
+> /* Check if "-f rtp" is entered or not and set flag accordinlgy */
+> 
+> 			for (i = 0; i<argc; i++) {
+> 				if (!strcmp(argv[i],"-f") && !strcmp(argv[i+1],"rtp")) {
+> 					RTPentered = i;
+> 					break;
+> 				}
+> 			}
+> 			
+> /* Create streamTest.cmd, parse command line option and add to the .cmd file that can be read by streamTest */			
+> 			
+> 			idx = locate_option(argc, argv, options, "i");
+> 				if (idx > 0) {
+> 					if(argv[idx+1] != NULL) {
+> 						vmFlag = 1;
+> 						fptr = fopen("/tmp/host_files/streamTest.cmd", "w");
+> 						
+> 						if(iaEnabled) {
+> 							if(backGroundMode)
+> 								strcat(streamCommand, "-m7 -t4 -f1600 -eIAStreamDemo.out -cSIGC66XX-8 -s2 -bg -i/mnt/ramdisk/share/");
+> 							else
+> 								strcat(streamCommand, "-m7 -t4 -f1600 -eIAStreamDemo.out -cSIGC66XX-8 -s2 -i/mnt/ramdisk/share/");
+> 						}
+> 						
+> 						else {
+> 							if(backGroundMode == 1) /* Checking the flag for *bg* option and adding flag in streamTest.cmd accordinlgy. HP, July 2015*/
+> 								strcat(streamCommand, "-m0xff -f1600 -estream.out -cSIGC66XX-8 -s2 -bg -i/mnt/ramdisk/share/");
+> 							else
+> 								strcat(streamCommand, "-m0xff -f1600 -estream.out -cSIGC66XX-8 -s2 -i/mnt/ramdisk/share/");
+> 						}
+> 						strcpy(inputFileName, strtok(argv[idx+1], "-"));
+> 						token = strtok(inputFileName, "/");
+> 						
+> 						for (int j = idx; j < argc; j++) {
+> 							if((argv[j][0] == '/') && (j != (idx + 1))) {
+> 								outFileIndex = j;
+> 								//printf("Output file name = %s\n", argv[outFileIndex]);
+> 								break;
+> 							}
+> 						}
+> 						
+> 							strcpy(outputFileName, argv[outFileIndex]);                          
+> 							token = strtok(outputFileName, "/");
+> 							
+> 							while( token != NULL ) {
+> 								strcpy(outputFileName, token);
+> 								token = strtok(NULL, "/");
+> 							}
+> 
+> 						strcat(streamCommand, outputFileName);
+> 						idx = locate_option(argc, argv, options, "s"); 
+> 						strcpy(resolutionString, argv[idx+1]);
+> 						token = strtok(resolutionString, "x");
+> 						strcat(streamCommand," -x");  
+> 						strcat(streamCommand,token);             
+> 						
+> 						while( token != NULL ) {
+> 							token = strtok(NULL, "x");
+> 							if(token != NULL) {
+> 								strcat(streamCommand, " -y");        
+> 								strcat(streamCommand,token);
+> 							}
+> 						}
+> 						
+> 						idx = locate_option(argc, argv, options, "b");
+> 						strcat(streamCommand," -B");  
+> 						strcat(streamCommand,argv[idx+1]); 
+> 						idx = locate_option(argc, argv, options, "r");
+> 						strcat(streamCommand," -r"); 
+> 						strcat(streamCommand,argv[idx+1]);
+> 						
+> 						if (!RTPentered) /* parse RTP input and write it to streamTest.cmd file */ 
+> 							strcat(streamCommand, " -o/mnt/ramdisk/share/c66xOutput.h264"); 
+> 							
+> 						if (RTPentered) {
+> 							strcat(streamCommand," -D");
+> 							strcpy(RTPinput, argv[RTPentered+2]);                        
+> 							token = strtok(RTPinput, "/");
+> 							
+> 							while( token != NULL ) {
+> 								strcpy(RTPinput, token);
+> 								token = strtok(NULL, "/");
+> 							}
+> 						}
+> 							
+> 							/*printf("Command line Before RTP modifications...\n");
+> 							for (i=0; i<argc; i++)
+> 							printf("%s ", argv[i]);
+> 							printf("\n");*/
+> 							
+> 							if(!debugMode) { /* If debug mode is OFF, remove RTP command line to avoid ffmpeg streaming */
+> 								if(RTPentered)
+> 								{
+> 									argv[i] = argv[argc-1];
+> 									argv[argc-1] = argv[argc-2] = argv[argc-3] = NULL;
+> 									argc -= 3;		
+> 								}	
+> 							}
+> 							
+> 							else { /* If Debug Mode is ON, keep the RTP command line for ffmpeg streaming */
+> 								if (RTPentered) {
+> 									int count = 0, i;
+> 									char temp[2] = ":";
+> 									strcpy(rtpaddress, argv[RTPentered+2]);
+> 									token = strtok(rtpaddress, delimiter);
+> 								
+> 									while((token != NULL) && (count < 2)) {
+> 										if (count == 1) { /* Increment port number by 2 incase of *d (debug)* mode */
+> 											portChange = atoi(token);
+> 											portChange += 2;
+> 											sprintf(bufferTemp, "%d", portChange);
+> 											strcpy(token, bufferTemp);
+> 										}
+> 										strcat(dest,token);
+> 										count++;
+> 										if (count<2)
+> 											strcat(dest,temp);
+> 											token = strtok(NULL, delimiter);
+> 										}
+> 									strcpy(argv[RTPentered+2],dest);
+> 									
+> 									argc = argc+2; /* Adding "-c:v libx264" so to do ffmpeg yuv-->h264 encoding before streaming */
+> 									for (i=(argc-1);i>=(argc-3);i--) {
+> 										argv[i] = argv[i-2];
+> 										argv[i-2] = NULL;
+> 									}
+> 									argv[RTPentered] = codecParam;
+> 									argv[RTPentered+1] = lib;
+> 								}
+> 								else { /* Adding "-c:v libx264" to do ffmpeg yuv-->h264 file-to-file encoding */
+> 								char temp[128];
+> 									argc = argc+3;
+> 									argv[argc-3] = codecParam;
+> 									argv[argc-2] = lib;
+> 									strcpy(temp, argv[argc-4]);
+> 									argv[argc-1] = strtok(temp, ".");
+> 									strcat(argv[argc-1], "_ffmpeg.h264");
+> 								}
+> 							}
+> 							strcat(streamCommand, RTPinput);
+> 							//printf("Output file name = %s\n", RTPinput);
+> 						printf("Command line that will fed to ffmpeg code...\n");
+> 							for (i=0; i<argc; i++)
+> 							printf("%s ", argv[i]);
+> 							printf("\n");
+> 						fprintf(fptr, "%s", streamCommand);
+> 						fclose(fptr);
+> 						//sleep(10);
+> 						if((c66x_accel != C66X_ACCEL_HOSTFS_MODE) && (c66x_accel != C66X_ACCEL_VIRTFS_MODE)) { /* For VIRTIO, HOSTIO Mode, do not use ffmpeg code for file copying, use Readstream/Writestream (which is not implemented yet so exit(0) for now)*/
+> 							printf("Under development...\n");
+> 							printf("Not using ffmpeg code for file copying...\n");
+> 							exit(0);
+> 						}
+> 				}
+> 			} 
+> 		}
+> #endif
