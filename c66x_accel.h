@@ -50,6 +50,4 @@
 
 #define C66X_ACCEL_GUI_FOREGROUND           0x100
 
-//#include "vdi.h"
-
 #endif /* AVCODEC_C66X_ACCEL_H */
