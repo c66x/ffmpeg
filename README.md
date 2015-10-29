@@ -6,7 +6,7 @@
    -hwaccel c66x [optional syntax]
 4. Software from Signalogic: -c66x CPU code acceleration executable and x86 DirectCore library and drivers (for supported Linux, see below). For VM functionality, DirectCore virtIO drivers are additionally required
 
-###Steps to apply a patch to ffmpeg
+###Steps to apply c66x patch to ffmpeg
 1. Copy c66x_accel.h to <FFMPEG_PKGS>/include folder that contains ffmpeg header files
 2. Apply a patch to ffmpeg.c using command,
    <br />patch ffmpeg.c ffmpeg_Signalogic.patch
